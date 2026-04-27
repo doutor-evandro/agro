@@ -14,6 +14,8 @@ from core.stat_analysis import analyze_market, build_report, list_profiles
 from data.storage.json_store import init_json_store, series_history
 from data.storage.sqlite_store import init_db
 
+st.set_page_config(page_title="Analise", layout="wide")
+
 
 @st.cache_resource(show_spinner=False)
 def _bootstrap():
@@ -23,7 +25,6 @@ def _bootstrap():
 
 
 _bootstrap()
-st.set_page_config(page_title="Analise", layout="wide")
 st.title("Analise Estatistica")
 st.caption(
     "Resumo multivariado por serie (Soja, Milho, USD/BRL e Soja em R$). "

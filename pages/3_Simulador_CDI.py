@@ -18,6 +18,8 @@ from core.carry_simulator import (
 from data.storage.json_store import init_json_store, series_history
 from data.storage.sqlite_store import init_db, last_snapshot
 
+st.set_page_config(page_title="Simulador CDI", layout="wide")
+
 
 @st.cache_resource(show_spinner=False)
 def _bootstrap():
@@ -27,7 +29,6 @@ def _bootstrap():
 
 
 _bootstrap()
-st.set_page_config(page_title="Simulador CDI", layout="wide")
 st.title("Simulador de Carry (CDI)")
 st.caption(
     "Compara o resultado de vender hoje e aplicar no CDI com o resultado de "
