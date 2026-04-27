@@ -59,12 +59,9 @@ def _runtime_data_dir() -> Path:
                 return repo_data_dir
         return exe_dir
  
-    # 3) Cloud / Linux: usa pasta home (gravavel)
+    # 3) Cloud / Linux server: pasta no home (gravavel; repo pode ser read-only)
     project_root = Path(__file__).resolve().parent.parent
-    is_streamlit_cloud = "/mount/src/" in str(project_root) or os.environ.get("STREAMLIT_RUNTIME_ENV") is not None
-    is_linux_server = sys.platform.startswith("linux") and not _path_is_writable(project_root)
- 
-    if is_streamlit_cloud or is_linux_server:
+    if _should_use_home_data_dir(project_root):
         home_dir = Path.home() / ".agro_dashboard"
         home_dir.mkdir(parents=True, exist_ok=True)
         return home_dir
@@ -82,6 +79,28 @@ def _path_is_writable(path: Path) -> bool:
         return True
     except Exception:
         return False
+
+
+def _should_use_home_data_dir(project_root: Path) -> bool:
+    """
+    Streamlit Community Cloud monta o repo em /mount/src/ (somente leitura).
+    Tambem tratamos Linux em container onde a arvore do projeto nao e gravavel.
+    Variaveis de ambiente cobrem deployments onde o path nao contem /mount/src/.
+    """
+    root_s = str(project_root)
+    if "/mount/src/" in root_s or "/mount/streamlit/" in root_s:
+        return True
+
+    env = os.environ
+    if env.get("STREAMLIT_RUNTIME_ENV"):
+        return True
+    # Novos endpoints Community Cloud / CE (quando expostos)
+    if env.get("STREAMLIT_CLOUD_APP_URL") or env.get("STREAMLIT_CE_APP_URL"):
+        return True
+
+    if sys.platform.startswith("linux") and not _path_is_writable(project_root):
+        return True
+    return False
  
  
 APP_DIR = _runtime_data_dir()
@@ -101,7 +120,15 @@ NA_URLS = {
  
 FX_URL = "https://economia.awesomeapi.com.br/json/last/USD-BRL"
  
-USER_AGENT = {"User-Agent": "Mozilla/5.0"}
+# User-Agent mais completo reduz bloqueios (403/empty body) ao fazer scraping em CDN/servidor.
+USER_AGENT = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+}
  
 # Default update interval
 DEFAULT_INTERVAL_SEC = 900  # 15 min

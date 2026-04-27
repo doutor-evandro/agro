@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Ambientes virtuais
+.venv/
+venv/
+ENV/
+
+# Testes / ferramentas
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Dados gerados pela app localmente (SQLite/JSON em runtime)
+*.sqlite
+*.sqlite-journal
+agro_history.json
+
+# Diretório opcional de dados em ~/.agro_dashboard no Linux/cloud
+.agro_dashboard/
+
+# Build / pacotes
+*.egg-info/
+dist/
+build/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

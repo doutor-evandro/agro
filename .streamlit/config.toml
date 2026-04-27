@@ -1,0 +1,15 @@
+# Configuracao local / Streamlit Community Cloud (valores podem ser sobrescritos na nuvem).
+# Ver: https://docs.streamlit.io/develop/api-reference/configuration/config.toml
+
+[theme]
+primaryColor = "#2e7d32"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+[server]
+maxUploadSize = 50
+
+[browser]
+gatherUsageStats = false

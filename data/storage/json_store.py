@@ -222,7 +222,8 @@ def _seed_two_year_history(payload: dict) -> int:
 
 def _fetch_fred_series(series_id: str) -> Dict[str, float]:
     url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-    resp = requests.get(url, timeout=20, headers=USER_AGENT)
+    # Timeout menor no cold start evita travar a primeira carga no Streamlit Cloud se FRED estiver lento.
+    resp = requests.get(url, timeout=15, headers=USER_AGENT)
     resp.raise_for_status()
 
     reader = csv.DictReader(io.StringIO(resp.text))

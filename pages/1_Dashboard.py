@@ -4,7 +4,6 @@ Pagina Dashboard - cotacoes ao vivo + historico + analise de tendencia da soja.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-import io
 
 import matplotlib
 matplotlib.use("Agg")
@@ -28,14 +27,6 @@ def _bootstrap():
     return True
 
 
-# Cache compartilhado entre todos os usuarios da app: ttl=900s (15 min).
-# Reduz drasticamente o numero de chamadas a AwesomeAPI / Noticias Agricolas
-# evitando o erro 429 (rate limit) e melhora o tempo de resposta.
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_snapshot_cached():
-    return fetch_snapshot()
-
-
 _bootstrap()
 st.title("Dashboard")
 st.caption("Cotacoes em tempo real (Soja, Milho, USD/BRL) e historico.")
@@ -46,7 +37,9 @@ with col_a:
     if st.button("Atualizar agora", type="primary", use_container_width=True):
         with st.spinner("Buscando cotacoes..."):
             try:
-                snap = fetch_snapshot_cached()
+                # Busca sempre ao vivo (sem @st.cache_data): cache compartilhado
+                # fazia o botao devolver cotacao antiga ate expirar o TTL.
+                snap = fetch_snapshot()
                 insert_snapshot(snap)
                 append_snapshot(snap)
                 st.session_state["last_snapshot_ts"] = snap.ts
@@ -56,16 +49,10 @@ with col_a:
                 if "429" in msg or "Too Many Requests" in msg:
                     st.error(
                         "Limite de requisicoes atingido na fonte de cotacoes (erro 429). "
-                        "Aguarde alguns minutos e tente novamente. "
-                        "O cache de 15 min reduz esse problema apos a primeira atualizacao bem-sucedida."
+                        "Aguarde alguns minutos e tente novamente."
                     )
                 else:
                     st.error(f"Falha na atualizacao: {msg}")
-
-    # Botao para limpar cache manualmente, se o usuario quiser forcar nova busca
-    if st.button("Limpar cache", help="Forca nova consulta as fontes na proxima atualizacao", use_container_width=True):
-        fetch_snapshot_cached.clear()
-        st.success("Cache limpo.")
 
 with col_b:
     auto = st.toggle("Auto-refresh (60s)", value=False, help="Recarrega a pagina a cada 60s")
