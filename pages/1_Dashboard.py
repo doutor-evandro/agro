@@ -124,8 +124,29 @@ else:
     milho = [p[1] for p in filtered]
 
     fig, ax = plt.subplots(figsize=(11, 4.2))
-    ax.plot(ts, soja_brl, label="Soja (R$/sc)", color="#2e7d32", linewidth=1.8)
-    ax.plot(ts, milho, label="Milho (R$/sc)", color="#ef6c00", linewidth=1.4, alpha=0.85)
+    # Com 1 so ponto, linha sem marcador quase nao aparece; poucos pontos tambem beneficiam de marcadores.
+    n_pts = len(filtered)
+    mk = "o" if n_pts <= 14 else None
+    ms = 5 if n_pts <= 14 else 0
+    ax.plot(
+        ts,
+        soja_brl,
+        label="Soja (R$/sc)",
+        color="#2e7d32",
+        linewidth=1.8,
+        marker=mk,
+        markersize=ms,
+    )
+    ax.plot(
+        ts,
+        milho,
+        label="Milho (R$/sc)",
+        color="#ef6c00",
+        linewidth=1.4,
+        alpha=0.85,
+        marker=mk,
+        markersize=ms,
+    )
     ax.set_ylabel("R$ por saca")
     ax.set_title(f"Cotacoes em R$/sc - {sel}")
     ax.grid(True, alpha=0.25)

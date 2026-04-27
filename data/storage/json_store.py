@@ -122,11 +122,25 @@ def append_snapshot(s: Snapshot) -> None:
         "soja_brl": float(s.soja_brl),
         "source": "live",
     }
-    if _upsert_points(payload, [row]) > 0:
+    ch = _upsert_points(payload, [row])
+    ch += _sync_from_sqlite(payload)
+    if ch > 0:
+        _write_payload(payload)
+
+
+def ensure_history_synced() -> None:
+    """
+    Garante que snapshots do SQLite entram no JSON antes de ler o historico.
+    Evita grafico vazio quando o KPI veio do SQLite mas o arquivo JSON estava
+    defasado (ex.: Streamlit Cloud, falha silenciosa no append, ou sync perdido).
+    """
+    payload = _read_payload()
+    if _sync_from_sqlite(payload) > 0:
         _write_payload(payload)
 
 
 def series_history() -> List[Point]:
+    ensure_history_synced()
     payload = _read_payload()
     out: List[Point] = []
     for row in payload.get("history", []):
