@@ -16,6 +16,44 @@ from data.storage.json_store import append_snapshot, init_json_store, series_his
 from data.storage.sqlite_store import init_db, insert_snapshot, last_snapshot
 from services.fetch_service import fetch_snapshot
 
+# Faixas temporais iguais ao HistoryChart do app desktop (AgroDashboardPro/ui/charts/history_chart.py).
+_RANGE_UI = [
+    ("1 dia", "1D"),
+    ("5 dias", "5D"),
+    ("1 mes", "1M"),
+    ("6 meses", "6M"),
+    ("1 ano", "1Y"),
+    ("2 anos", "2Y"),
+    ("Todos", "ALL"),
+]
+
+
+def _history_range_cutoff(range_key: str) -> datetime | None:
+    now = datetime.now()
+    if range_key == "1D":
+        return now - timedelta(days=1)
+    if range_key == "5D":
+        return now - timedelta(days=5)
+    if range_key == "1M":
+        return now - timedelta(days=30)
+    if range_key == "6M":
+        return now - timedelta(days=182)
+    if range_key == "1Y":
+        return now - timedelta(days=365)
+    if range_key == "2Y":
+        return now - timedelta(days=730)
+    if range_key == "ALL":
+        return None
+    return now - timedelta(days=730)
+
+
+def _filter_points_by_range(points, range_key: str):
+    cutoff = _history_range_cutoff(range_key)
+    if cutoff is None:
+        return list(points)
+    return [p for p in points if p[0] >= cutoff]
+
+
 # Deve ser o primeiro comando Streamlit desta pagina (antes de cache/bootstrap).
 st.set_page_config(page_title="Dashboard", layout="wide")
 
@@ -95,67 +133,71 @@ else:
     )
     st.caption(f"Atualizado em {s.ts}  |  Fonte: {s.source}")
 
-# ---------- Grafico historico ----------
+# ---------- Graficos historicos (espelho do desktop: 3 linhas = milho | soja US$+R$ | USD/BRL) ----------
 st.subheader("Historico")
 st.caption(
-    "Inclui serie mensal de referencia (FRED + USD/BRL) quando so ha cotacoes locais recentes; "
-    "o filtro de periodo restringe o que aparece no grafico."
+    "Mesmas faixas do programa desktop (1 dia … 2 anos … Todos). "
+    "Tres graficos: milho em R$/sc; soja em US$/sc e em R$/sc (eixo direito); USD/BRL."
 )
 
 points = series_history()
 
-range_options = {
-    "7 dias": 7,
-    "30 dias": 30,
-    "90 dias": 90,
-    "180 dias": 180,
-    "1 ano": 365,
-    "Tudo": None,
-}
-sel = st.radio("Periodo", list(range_options.keys()), index=2, horizontal=True)
-days = range_options[sel]
+labels_only = [x[0] for x in _RANGE_UI]
+keys_by_label = dict(_RANGE_UI)
+sel_label = st.radio(
+    "Faixa",
+    labels_only,
+    index=5,
+    horizontal=True,
+    help="Equivalente aos botoes 'Faixa' do Agro Dashboard PRO desktop.",
+)
+range_key = keys_by_label[sel_label]
 
-filtered = points
-if days is not None:
-    cutoff = datetime.now() - timedelta(days=days)
-    filtered = [p for p in points if p[0] >= cutoff]
+filtered = _filter_points_by_range(points, range_key)
 
 if not filtered:
-    st.warning("Nao ha pontos no periodo selecionado.")
+    st.warning("Nao ha pontos na faixa selecionada.")
 else:
-    ts = [p[0] for p in filtered]
-    soja_brl = [p[4] for p in filtered]
-    milho = [p[1] for p in filtered]
+    x = [p[0] for p in filtered]
+    milho_y = [p[1] for p in filtered]
+    soja_usd_y = [p[2] for p in filtered]
+    usd_brl_y = [p[3] for p in filtered]
+    soja_brl_y = [p[4] for p in filtered]
 
-    fig, ax = plt.subplots(figsize=(11, 4.2))
-    # Com 1 so ponto, linha sem marcador quase nao aparece; poucos pontos tambem beneficiam de marcadores.
     n_pts = len(filtered)
-    mk = "o" if n_pts <= 14 else None
-    ms = 5 if n_pts <= 14 else 0
-    ax.plot(
-        ts,
-        soja_brl,
-        label="Soja (R$/sc)",
-        color="#2e7d32",
-        linewidth=1.8,
-        marker=mk,
-        markersize=ms,
-    )
-    ax.plot(
-        ts,
-        milho,
-        label="Milho (R$/sc)",
-        color="#ef6c00",
-        linewidth=1.4,
-        alpha=0.85,
-        marker=mk,
-        markersize=ms,
-    )
-    ax.set_ylabel("R$ por saca")
-    ax.set_title(f"Cotacoes em R$/sc - {sel}")
-    ax.grid(True, alpha=0.25)
-    ax.legend(loc="best")
-    fig.autofmt_xdate()
+    mk = "o" if n_pts <= 24 else None
+    ms = 4 if n_pts <= 24 else 0
+
+    fig = plt.figure(figsize=(11, 10))
+    fig.set_constrained_layout(True)
+    ax_milho = fig.add_subplot(311)
+    ax_soja = fig.add_subplot(312)
+    ax_fx = fig.add_subplot(313)
+    ax_soja_brl = ax_soja.twinx()
+
+    ax_milho.set_title("Milho (R$/sc)")
+    ax_soja.set_title("Soja (US$/sc e R$/sc)")
+    ax_fx.set_title("USD/BRL")
+
+    (lm,) = ax_milho.plot(x, milho_y, color="#2e7d32", linewidth=1.6, marker=mk, markersize=ms)
+    (ls_usd,) = ax_soja.plot(x, soja_usd_y, color="#1565c0", linewidth=1.6, marker=mk, markersize=ms)
+    (ls_brl,) = ax_soja_brl.plot(x, soja_brl_y, color="#ef6c00", linewidth=1.6, marker=mk, markersize=ms)
+    (lf,) = ax_fx.plot(x, usd_brl_y, color="#6a1b9a", linewidth=1.6, marker=mk, markersize=ms)
+
+    ax_milho.set_ylabel("R$/sc")
+    ax_soja.set_ylabel("US$/sc")
+    ax_soja_brl.set_ylabel("R$/sc")
+    ax_fx.set_ylabel("R$/US$")
+
+    ax_milho.grid(True, alpha=0.25)
+    ax_soja.grid(True, alpha=0.25)
+    ax_fx.grid(True, alpha=0.25)
+
+    ax_milho.legend(handles=[lm], loc="upper left")
+    ax_soja.legend(handles=[ls_usd, ls_brl], loc="upper left")
+    ax_fx.legend(handles=[lf], loc="upper left")
+
+    fig.suptitle(f"Historico — {sel_label}", fontsize=12, y=1.02)
     st.pyplot(fig, clear_figure=True)
 
 # ---------- Analise de tendencia (Soja R$) ----------
