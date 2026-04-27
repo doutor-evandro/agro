@@ -97,6 +97,10 @@ else:
 
 # ---------- Grafico historico ----------
 st.subheader("Historico")
+st.caption(
+    "Inclui serie mensal de referencia (FRED + USD/BRL) quando so ha cotacoes locais recentes; "
+    "o filtro de periodo restringe o que aparece no grafico."
+)
 
 points = series_history()
 
